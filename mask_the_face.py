@@ -13,11 +13,20 @@ parser = argparse.ArgumentParser(
     description="MaskTheFace - Python code to mask faces dataset"
 )
 parser.add_argument(
-    "--path",
+    "--inpath",
     type=str,
     default="",
     help="Path to either the folder containing images or the image itself",
 )
+
+parser.add_argument(
+    "--outpath",
+    type=str,
+    default="",
+    help="Path for output images",
+)
+
+
 parser.add_argument(
     "--mask_type",
     type=str,
@@ -75,7 +84,12 @@ parser.add_argument(
 parser.set_defaults(feature=False)
 
 args = parser.parse_args()
-args.write_path = args.path + "_masked"
+args.path = args.inpath
+
+if (args.outpath != ""):
+	 args.write_path = args.outpath+'/'
+else:	
+   args.write_path = args.path + "_masked"
 
 # Set up dlib face detector and predictor
 args.detector = dlib.get_frontal_face_detector()
@@ -122,7 +136,10 @@ if is_directory:
     for f in tqdm(files):
         image_path = path + "/" + f
 
-        write_path = path + "_masked"
+        if (args.outpath != ""):
+            write_path = args.write_path + path.split('/')[-1]
+        else:    
+            write_path = path + "_masked"
         if not os.path.isdir(write_path):
             os.makedirs(write_path)
 
@@ -197,7 +214,10 @@ if is_directory:
 elif is_file:
     print("Masking image file")
     image_path = args.path
-    write_path = args.path.rsplit(".")[0]
+    if args.outpath != "":
+    	  write_path = args.outpath+args.path.rsplit(".")[0]
+    else:	  
+        write_path = args.path.rsplit(".")[0]
     if is_image(image_path):
         # Proceed if file is image
         # masked_images, mask, mask_binary_array, original_image
