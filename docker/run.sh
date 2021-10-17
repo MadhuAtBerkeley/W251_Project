@@ -144,6 +144,8 @@ sudo docker run --runtime nvidia -it --rm --network host -e DISPLAY=$DISPLAY \
     -v /tmp/.X11-unix/:/tmp/.X11-unix \
     -v /tmp/argus_socket:/tmp/argus_socket \
     -v /etc/enctune.conf:/etc/enctune.conf \
+    -v $PWD/models/:/jetson-inference/models \
+    -v $PWD/data/:/jetson-inference/data \
     -v $PWD/jetson-inference/:/jetson-inference/ \
     $V4L2_DEVICES  $USER_VOLUME \
     $CONTAINER_IMAGE $USER_COMMAND
