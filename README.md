@@ -21,11 +21,20 @@ jupyter notebook --allow-root
 
 Run finetune_no_augmentation.ipynb
 
+The trained model is saved as /data/model_no_mask.pt
+
 ## 4. Facenet training with masks
 
 Run finetune_with_augmentation.ipynb
 
+The trained model is saved as /data/model_with_mask.pt
+
+The training with and without the augmentation are done to demonstrate improvements with the augmentation.
+
+
 ## 5. Masked face Inference on Jetson
+
+The model trained in steps 3) and 4) are downloaded to W251_Project/data in Jetson.  The Jetson files are in jetson-inference subfolder.
 
 Run PyTorch docker container for inference
 ```
