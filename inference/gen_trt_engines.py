@@ -20,8 +20,8 @@ def gen_trt_engine(net, onnx_file, trt_file, dummy_input):
 def main():
     
     # Generate pnet
-    onnx_file = 'pnet1.onnx'
-    trt_file = './models/trt_engines/pnet_engine1.trt'
+    onnx_file = 'pnet.onnx'
+    trt_file = './models/trt_engines/pnet_engine.trt'
     pnet = PNet()
     H = 700
     W = int(1280*12/40)
@@ -30,15 +30,15 @@ def main():
     
     
     # Generate rnet
-    onnx_file = 'rnet1.onnx'
-    trt_file = './models/trt_engines/rnet_engine1.trt'
+    onnx_file = 'rnet.onnx'
+    trt_file = './models/trt_engines/rnet_engine.trt'
     rnet = RNet()
     dummy_input=torch.randn(64, 3, 24, 24)
     gen_trt_engine(rnet, onnx_file, trt_file, dummy_input)
     
     # Generate onet
-    onnx_file = 'onet1.onnx'
-    trt_file = './models/trt_engines/onet_engine1.trt'
+    onnx_file = 'onet.onnx'
+    trt_file = './models/trt_engines/onet_engine.trt'
     onet = ONet()
     dummy_input=torch.randn(64, 3, 48, 48)
     gen_trt_engine(onet, onnx_file, trt_file, dummy_input)

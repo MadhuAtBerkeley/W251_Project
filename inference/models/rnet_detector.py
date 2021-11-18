@@ -14,11 +14,13 @@ class RNetDetector(object):
         self.batch_size = batch_size
 
     def run_rnet(self, images, threshold, bounding_boxes):
-        output = []
-        for count in range(int(images.shape[0]/self.batch_size)):
-            output.append(self.rnet_engine.run(images[count*self.batch_size:(count+1)*self.batch_size], self.output, self.context_rnet))
+        #output = []
+        #for count in range(int(images.shape[0]/self.batch_size)):
+        #    output.append(self.rnet_engine.run(images[count*self.batch_size:(count+1)*self.batch_size], self.output, #self.context_rnet))
+
+        output = self.rnet_engine.run(images[0:self.batch_size], self.output, self.context_rnet)
  
-        output = np.vstack(output)
+        #output = np.vstack(output)
         offsets = output[:,0:4]
         probs = output[:,4:]
     

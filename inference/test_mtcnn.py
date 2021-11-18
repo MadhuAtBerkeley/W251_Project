@@ -1,12 +1,16 @@
 
 from PIL import Image
-from models.mtcnn import MTCNNDetector
+from models.mtcnn_rtt import MTCNNDetector
 
 
 
-image = Image.open('./0001_01.jpg')
+image1= Image.open('./0001_01.jpg')
 mtcnn_detect = MTCNNDetector(path='./models')
-img = mtcnn_detect.detect_face(image)
-img.show()
+img1 = mtcnn_detect.detect_face(image1)
+image2= Image.open('./0017_01.jpg')
+img2 = mtcnn_detect.detect_face(image2)
+
+img2.show()
+
 while(1):
   i=0
