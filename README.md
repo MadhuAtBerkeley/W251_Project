@@ -36,7 +36,7 @@ The training with and without the augmentation are done to demonstrate improveme
 
 The trt versions of models are stored in W251_Project/models/trt_engines. 
 
-* Run pip3 install . (from inference folder) to generate python package
+* Run pip3 install -e . (from inference folder) to generate python package
 * Run setup.sh to install pycuda
 * anchors are in W251_Project/data/test_anchors folder and test data in W251_Project/data/test_no_mask
 * Run sudo python3 test_mtcnn.py (inference folder)
