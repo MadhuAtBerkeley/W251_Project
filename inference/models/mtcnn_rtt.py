@@ -25,6 +25,7 @@ class TensorRTEngine(object):
     
     def __init__(self, in_buf_size=1000, out_buf_size=1000):
         
+        #self.cuda_ctx = cuda.Device(0).make_context()
         # allocate device memory
         self.d_input = cuda.mem_alloc(in_buf_size)
         self.d_output = cuda.mem_alloc(out_buf_size)
@@ -45,12 +46,16 @@ class TensorRTEngine(object):
         self.stream.synchronize()
         
         return output
+    #def release(self):
+        #self.cuda_ctx.pop()
+        #del self.cuda_ctx
     
 
 class MTCNNDetector(object):
 
     def __init__(self, max_input_size = 700*384*3*4, max_output_size = 6*345*187*4, min_face_size=40,path=None):    
-    
+        
+        
         trt_engine = TensorRTEngine(in_buf_size=max_input_size, out_buf_size = max_output_size)    
         if path == None:
            path = '.'
@@ -88,19 +93,19 @@ class MTCNNDetector(object):
         img_w, img_h = image.size
         scale = min((self.img_height*1.0)/img_h, (self.img_width*1.0)/img_w)
         if scale < 1.0:
-           image = image.resize((int(self.img_width*scale),int(self.img_height*scale)))
+           image = image.resize((int(img_w*scale),int(img_h*scale)))
         
         
         output = self.pnet_detector.run_pnet(image)
         bounding_boxes = self.pnet_detector.propose_bboxes(image, output, self.thresholds[0])
 
-        #show_bboxes(image, bounding_boxes)    
+        show_bboxes(image, bounding_boxes)    
     
         img_boxes = get_image_boxes(bounding_boxes, image, size=24)
         img =  np.asarray(img_boxes, np.float16)
         img =  img[0:64]
         bounding_boxes = self.rnet_detector.run_rnet(img, self.thresholds[1], bounding_boxes)
-        #show_bboxes(image, bounding_boxes)
+        show_bboxes(image, bounding_boxes)
     
         img_boxes = get_image_boxes(bounding_boxes, image, size=48)
         img =  np.asarray(img_boxes, np.float16)
@@ -108,17 +113,25 @@ class MTCNNDetector(object):
         bounding_boxes, landmarks = self.onet_detector.run_onet(img, self.thresholds[2], bounding_boxes)
         #img = show_bboxes(image, bounding_boxes, landmarks)
         #print (bounding_boxes.shape)
-        bounding_boxes[0][0] = bounding_boxes[0][0]-20
-        bounding_boxes[0][1] = bounding_boxes[0][1]-20
-        bounding_boxes[0][2] = bounding_boxes[0][2]+20
-        bounding_boxes[0][3] = bounding_boxes[0][3]+20
-
-        img = extract_face(image, bounding_boxes[0])
+        
+        
+        if (bounding_boxes.shape[0] > 0):
+            bounding_boxes[0][0] = max(0,bounding_boxes[0][0]-20)
+            bounding_boxes[0][1] = max(0, bounding_boxes[0][1]-20)
+            bounding_boxes[0][2] = bounding_boxes[0][2]+20
+            bounding_boxes[0][3] = bounding_boxes[0][3]+20
+            img = extract_face(image, bounding_boxes[0])
+        else:
+            img=None
         return img
        
     def face_vector(self, image):
         output = self.face_recognizer.run_resnet(image)
-        return output
+        return np.array(output)
+
+    
+        
+               
 
 
 def crop_resize(img, box, image_size):

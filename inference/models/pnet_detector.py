@@ -45,6 +45,8 @@ class PNetDetector(object):
             h_offset = sum(self.image_h_offsets[0:i+1])
             h = int(height * scale)
             w = int(width * scale)
+            if h == 0 or w == 0:
+               continue
             img = image.resize((w, h), Image.BILINEAR)
             img = np.asarray(img, 'float16')
             im_data[h_offset:(h_offset+h), :w,:] = img
@@ -64,7 +66,7 @@ class PNetDetector(object):
         return output
     
     
-    def propose_bboxes(self, image, probs_offsets, threshold=0.7):
+    def propose_bboxes(self, image, probs_offsets, threshold=0.7, verbose=False):
         width, height = image.size
         output = probs_offsets
         probs = output[0,5,:,:]
@@ -101,7 +103,8 @@ class PNetDetector(object):
 
         bounding_boxes = convert_to_square(bounding_boxes)
         bounding_boxes[:, 0:4] = np.round(bounding_boxes[:, 0:4])
-        print('number of bounding boxes:', len(bounding_boxes))
+        if verbose:
+            print('number of bounding boxes:', len(bounding_boxes))
         return bounding_boxes
 
         

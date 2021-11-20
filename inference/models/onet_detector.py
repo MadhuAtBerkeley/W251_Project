@@ -13,13 +13,13 @@ class ONetDetector(object):
         self.output = np.empty([batch_size, 16], dtype = np.float16)
         self.batch_size = batch_size
 
-    def run_onet(self, images, threshold, bounding_boxes):
+    def run_onet(self, images, threshold, bounding_boxes,verbose=False):
         output = self.onet_engine.run(images, self.output, self.context_onet)
  
         #output = np.vstack(output)
-        offsets = output[:,0:4]
-        landmarks = output[:,4:14]
-        probs = output[:,14:16]
+        offsets = output[:images.shape[0],0:4]
+        landmarks = output[:images.shape[0],4:14]
+        probs = output[:images.shape[0],14:16]
     
    
         keep = np.where(probs[:, 1] > threshold)[0]
@@ -39,7 +39,8 @@ class ONetDetector(object):
         keep = nms(bounding_boxes, 0.7, mode='min')
         bounding_boxes = bounding_boxes[keep]
         landmarks = landmarks[keep]
-        print('number of bounding boxes:', len(bounding_boxes))
+        if(verbose):
+            print('number of bounding boxes:', len(bounding_boxes))
         return bounding_boxes, landmarks
 
 
