@@ -34,14 +34,9 @@ The training with and without the augmentation are done to demonstrate improveme
 
 ## 5. Masked face Inference on Jetson
 
-The model trained in steps 3) and 4) are downloaded to W251_Project/data in Jetson.  The Jetson files are in jetson-inference subfolder.
+The trt versions of models are stored in W251_Project/models/trt_engines. 
 
-Run PyTorch docker container for inference
-```
-docker/run.sh
-```
-Run jetson-inference/infer.ipynb inisde the container
-```
-jupyter notebook --allow-root
-```
-
+* Run pip3 install . (from inference folder) to generate python package
+* Run setup.sh to install pycuda
+* anchors are in W251_Project/data/test_anchors folder and test data in W251_Project/data/test_no_mask
+* Run sudo python3 test_mtcnn.py (inference folder)
