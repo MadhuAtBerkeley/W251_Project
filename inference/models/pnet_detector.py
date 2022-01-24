@@ -4,15 +4,32 @@ from PIL import Image
 import numpy as np
 from utils.box_utils import nms, _preprocess
 from utils.box_utils import calibrate_box, get_image_boxes, convert_to_square
+from time import time
+
+def preprocess_images(img):
+    """Preprocessing step before feeding the network.
+
+    Arguments:
+        img: a float numpy array of shape [h, w, c].
+
+    Returns:
+        a float numpy array of shape [1, c, h, w].
+    """
+    img = img.transpose((0, 3, 1, 2))
+    #img = np.expand_dims(img, 0)
+    img = (img - 127) #.5)*0.0078125
+    return img
 
 class PNetDetector(object):
     
-    def __init__(self, engine=None, context=None, ref_image_size=(1280, 720), min_face_size=40, factor=0.707):
+    def __init__(self, engine=None, context=None, ref_image_size=(1280, 720), min_face_size=40, factor=0.707, verbose=False):
         width, height = ref_image_size[0], ref_image_size[1]
         min_length = height
-        self.image_h_offsets = [0]
+        self.image_h_offsets = [[0], [0], [0]]
         # scales for scaling the image
-        self.scales = []
+        #self.scales = [[0.30, 0.026], [0.212, 0.053, 0.037, 0.019], [0.15, 0.106, 0.075]]
+        #self.scales = [[0.12], [0.085, 0.042], [0.06, 0.03, 0.02]]
+        self.scales = [[0.075], [0.053, 0.019], [0.0375, 0.0265]]
         self.min_detection_size = 12
         self.min_face_size = min_face_size
         
@@ -22,89 +39,104 @@ class PNetDetector(object):
         m = self.min_detection_size/self.min_face_size
         min_length *= m
         self.image_w_offset = int(width*m)
+        
+        
         self.pnet_engine = engine
         self.context_pnet = context
 
-        factor_count = 0
-        while min_length > self.min_detection_size:
-            scale = m*factor**factor_count
-            self.scales.append(scale)
-            self.image_h_offsets.append(int(scale*height))
-            min_length *= factor
-            factor_count += 1
+        for i in range(len(self.scales)):
+            for j in range(len(self.scales[i])):
+                self.image_h_offsets[i].append(int(self.scales[i][j]*height))
+    
 
-        print('scales:', ['{:.2f}'.format(s) for s in self.scales])
-        print('image pyramid offsets:', self.image_h_offsets)
         
-    def run_pnet(self, image):
-        width, height = image.size
-        im_data = np.zeros((sum(self.image_h_offsets), self.image_w_offset, 3), dtype=np.float16)
         
+        if(verbose):
+            print('scales:'.format(self.scales))
+            print('image pyramid offsets:', self.image_h_offsets)
+        
+    def run_pnet(self, images):
+        
+        t1 = time()
+        width, height = images[0].size #hape[1], image.shape[0]
+        
+        max_h_offset  = max(sum(offset) for offset in self.image_h_offsets)
+        im_data = np.zeros((3, max_h_offset, self.image_w_offset, 3), dtype=np.uint8)
+        
+        
+        for k, image in enumerate(images):
+            for i in range(len(self.scales)):
+                for j, scale in enumerate(self.scales[i]):
+                    h_offset = sum(self.image_h_offsets[i][0:j+1])
+                    h = int(height * scale)
+                    w = int(width * scale)
+                    if h == 0 or w == 0:
+                        continue
+                    #print(i, h_offset, h, h+h_offset)
+                    img = image.resize((w, h), Image.BILINEAR)
+                    img = np.asarray(img, 'uint8')
+                    im_data[i+k*len(self.scales), h_offset:(h_offset+h), :w,:] = img
                
-        for i, scale in enumerate(self.scales):
-            h_offset = sum(self.image_h_offsets[0:i+1])
-            h = int(height * scale)
-            w = int(width * scale)
-            if h == 0 or w == 0:
-               continue
-            img = image.resize((w, h), Image.BILINEAR)
-            img = np.asarray(img, 'float16')
-            im_data[h_offset:(h_offset+h), :w,:] = img
+        
             
-            
-        #img = torch.tensor(_preprocess(im_data))
-        img = _preprocess(im_data)
-      
-        img = np.ascontiguousarray(img, dtype=np.float16)
+        img = preprocess_images(im_data)
+        img = np.ascontiguousarray(img, dtype=np.int8) #float16)
+        print(img.shape)
         assert img.flags['C_CONTIGUOUS'] == True
-        #output = net(img)     
+           
   
-        output = np.empty([1,6,345,187], dtype = np.float16)
+        output = np.empty([3,6,22,43], dtype = np.float16)
         assert output.flags['C_CONTIGUOUS'] == True
         output = self.pnet_engine.run(img, output, self.context_pnet)
-        
+        t2 = time()    
+        print("Pnet Time:{}".format(t2-t1))
         return output
     
     
-    def propose_bboxes(self, image, probs_offsets, threshold=0.7, verbose=False):
-        width, height = image.size
+    
+    def propose_bboxes(self, images, probs_offsets, threshold=0.7, verbose=False):
+        t1 = time()
+        width, height = images[0].size
         output = probs_offsets
-        probs = output[0,5,:,:]
+        probs = output[:,5,:,:]
         offsets =output[:,0:4,:,:]
-        
-        # probs: probability of a face at each sliding window
-        # offsets: transformations to true bounding boxes
-        bounding_boxes = []
-        for i, scale in enumerate(self.scales):
-            h_offset = sum(self.image_h_offsets[0:i+1])//2
-            h = (int(height * scale) - 12) // 2 + 1
-            w = (int(width * scale) - 12) // 2 + 1
-            boxes = _generate_bboxes(probs[h_offset:h_offset+h,:w], offsets[:,:,h_offset:h_offset+h,:w], scale, threshold)
-            
-            if len(boxes) == 0:
-                continue
-
-            keep = nms(boxes[:, 0:5], overlap_threshold=0.7)
-            bounding_boxes.append(boxes[keep])
-    
    
-    
-        bounding_boxes = np.vstack(bounding_boxes)
-        bounding_boxes = bounding_boxes[bounding_boxes[:,4].argsort()[::-1]]
-        bounding_boxes = bounding_boxes[0:64]
+        bounding_boxes = []
+        for k in range(len(images)):
+            bounding_boxes.append([])
+     
+            bboxes_per_image = []
+            for i in range(len(self.scales)):
+                for j, scale in enumerate(self.scales[i]):
+                    h_offset = sum(self.image_h_offsets[i][0:j+1])//2
+                    h = (int(height * scale) - 12) // 2 + 1
+                    w = (int(width * scale) - 12) // 2 + 1
+                    boxes = _generate_bboxes(probs[i, h_offset:h_offset+h,:w], offsets[i,:,h_offset:h_offset+h,:w], scale, threshold)
+           
+                    if len(boxes) == 0:
+                        continue
+                    keep = nms(boxes[:, 0:5], overlap_threshold=0.5)    
+                    bboxes_per_image.append(boxes[keep])
+               
+            bboxes_per_image = np.vstack(bboxes_per_image)
         #print('number of bounding boxes:', len(bounding_boxes))
-    
-        keep = nms(bounding_boxes[:, 0:5], 0.7)
-        bounding_boxes = bounding_boxes[keep]
+   
+            keep = nms(bboxes_per_image[:, 0:5], threshold)
+            bboxes_per_image = bboxes_per_image[keep]    
+       
+    # use offsets predicted by pnet to transform bounding boxes
+            bboxes_per_image = calibrate_box(bboxes_per_image[:, 0:5],  bboxes_per_image[:, 5:])
+    # shape [n_boxes, 5]
 
-        # use offsets predicted by pnet to transform bounding boxes
-        bounding_boxes = calibrate_box(bounding_boxes[:, 0:5], bounding_boxes[:, 5:])
-        # shape [n_boxes, 5]
+            bboxes_per_image = convert_to_square(bboxes_per_image)
+            bboxes_per_image[:, 0:4] = np.round(bboxes_per_image[:, 0:4])
+            if verbose:
+                print('number of bounding boxes:', len(bboxes_per_image))
+            bounding_boxes[k] = bboxes_per_image
 
-        bounding_boxes = convert_to_square(bounding_boxes)
-        bounding_boxes[:, 0:4] = np.round(bounding_boxes[:, 0:4])
-        if verbose:
-            print('number of bounding boxes:', len(bounding_boxes))
+     
+        t2 = time()    
+        print("Propose BBoxes CPU Time:{}".format(t2-t1))
         return bounding_boxes
 
         
@@ -138,7 +170,7 @@ def _generate_bboxes(probs, offsets, scale, threshold):
         return np.array([])
 
     # transformations of bounding boxes
-    tx1, ty1, tx2, ty2 = [offsets[0, i, inds[0], inds[1]] for i in range(4)]
+    tx1, ty1, tx2, ty2 = [offsets[i, inds[0], inds[1]] for i in range(4)]
     # they are defined as:
     # w = x2 - x1 + 1
     # h = y2 - y1 + 1
