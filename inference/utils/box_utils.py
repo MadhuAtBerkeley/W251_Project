@@ -125,6 +125,40 @@ def calibrate_box(bboxes, offsets):
     return bboxes
 
 
+def get_image_boxes_org(bounding_boxes, img, size=24):
+    """Cut out boxes from the image.
+
+    Arguments:
+        bounding_boxes: a float numpy array of shape [n, 5].
+        img: an instance of PIL.Image.
+        size: an integer, size of cutouts.
+
+    Returns:
+        a float numpy array of shape [n, 3, size, size].
+    """
+
+    num_boxes = len(bounding_boxes)
+    width, height = img.size
+
+    [dy, edy, dx, edx, y, ey, x, ex, w, h] = correct_bboxes(bounding_boxes, width, height)
+    img_boxes = np.zeros((num_boxes, 3, size, size), 'float16')
+
+    for i in range(num_boxes):
+        img_box = np.zeros((h[i], w[i], 3), 'uint8')
+
+        img_array = np.asarray(img, 'uint8')
+        img_box[dy[i]:(edy[i] + 1), dx[i]:(edx[i] + 1), :] =\
+            img_array[y[i]:(ey[i] + 1), x[i]:(ex[i] + 1), :]
+
+        # resize
+        img_box = Image.fromarray(img_box)
+        img_box = img_box.resize((size, size), Image.BILINEAR)
+        img_box = np.asarray(img_box, 'float16')
+
+        img_boxes[i, :, :, :] = _preprocess(img_box)
+
+    return img_boxes
+
 def get_image_boxes(bounding_boxes, img, size=24):
     """Cut out boxes from the image.
 
@@ -141,7 +175,7 @@ def get_image_boxes(bounding_boxes, img, size=24):
     width, height = img.size
 
     [dy, edy, dx, edx, y, ey, x, ex, w, h] = correct_bboxes(bounding_boxes, width, height)
-    img_boxes = np.zeros((num_boxes, 3, size, size), 'float32')
+    img_boxes = np.zeros((num_boxes, 3, size, size), 'int8')
 
     for i in range(num_boxes):
         img_box = np.zeros((h[i], w[i], 3), 'uint8')
@@ -153,12 +187,11 @@ def get_image_boxes(bounding_boxes, img, size=24):
         # resize
         img_box = Image.fromarray(img_box)
         img_box = img_box.resize((size, size), Image.BILINEAR)
-        img_box = np.asarray(img_box, 'float32')
+        img_box = np.asarray(img_box, 'uint8')
 
-        img_boxes[i, :, :, :] = _preprocess(img_box)
+        img_boxes[i, :, :, :] = np.asarray(_preprocess(img_box), dtype=np.int8)
 
     return img_boxes
-
 
 def correct_bboxes(bboxes, width, height):
     """Crop boxes that are too big and get coordinates
@@ -235,7 +268,8 @@ def _preprocess(img):
     """
     img = img.transpose((2, 0, 1))
     img = np.expand_dims(img, 0)
-    img = (img - 127.5)*0.0078125
+    #img = (img - 127.5)*0.0078125
+    img = img - 127
     return img
 
 

@@ -34,8 +34,8 @@ class PNet(nn.Module):
             self.load_state_dict(state_dict)
 
     def normalize(self, x):
-        #x = x.to(torch.float32)
-        return((x-127.5)*0.0078125)
+        x = x.to(torch.float32)
+        return((x-0.5)*0.0078125)
             
     def forward(self, x):
         x = self.normalize(x)
@@ -87,7 +87,12 @@ class RNet(nn.Module):
             state_dict = torch.load(state_dict_path)
             self.load_state_dict(state_dict)
 
+    def normalize(self, x):
+        x = x.to(torch.float32)
+        return((x-0.5)*0.0078125)
+
     def forward(self, x):
+        x = self.normalize(x)
         x = self.conv1(x)
         x = self.prelu1(x)
         x = self.pool1(x)
@@ -144,7 +149,12 @@ class ONet(nn.Module):
             state_dict = torch.load(state_dict_path)
             self.load_state_dict(state_dict)
 
+    def normalize(self, x):
+        x = x.to(torch.float32)
+        return((x-0.5)*0.0078125)
+
     def forward(self, x):
+        x = self.normalize(x)
         x = self.conv1(x)
         x = self.prelu1(x)
         x = self.pool1(x)
