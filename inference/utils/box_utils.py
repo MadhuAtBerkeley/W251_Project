@@ -269,8 +269,8 @@ def _preprocess(img):
     img = img.transpose((2, 0, 1))
     img = np.expand_dims(img, 0)
     #img = (img - 127.5)*0.0078125
-    img = img - 127
-    return img
+    #img = img - 127
+    return img//2
 
 
 def show_bboxes(img, bounding_boxes, facial_landmarks=[]):

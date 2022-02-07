@@ -35,7 +35,9 @@ class PNet(nn.Module):
 
     def normalize(self, x):
         x = x.to(torch.float32)
-        return((x-0.5)*0.0078125)
+        #return((2*x-175.5)*0.0078125)
+        return(0.015625*x-1.3711)
+     
             
     def forward(self, x):
         x = self.normalize(x)
@@ -89,8 +91,9 @@ class RNet(nn.Module):
 
     def normalize(self, x):
         x = x.to(torch.float32)
-        return((x-0.5)*0.0078125)
-
+        #return((2*x-175.5)*0.0078125)
+        return(0.015625*x-1.3711)
+    
     def forward(self, x):
         x = self.normalize(x)
         x = self.conv1(x)
@@ -151,7 +154,8 @@ class ONet(nn.Module):
 
     def normalize(self, x):
         x = x.to(torch.float32)
-        return((x-0.5)*0.0078125)
+        #return((2*x-175.5)*0.0078125)
+        return(0.015625*x-1.3711)
 
     def forward(self, x):
         x = self.normalize(x)

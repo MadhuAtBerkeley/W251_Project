@@ -17,8 +17,8 @@ def preprocess_images(img):
     """
     img = img.transpose((0, 3, 1, 2))
     #img = np.expand_dims(img, 0)
-    img = (img - 127) #.5)*0.0078125
-    return img
+    #img = (img - 127) #.5)*0.0078125
+    return img//2
 
 class PNetDetector(object):
     
