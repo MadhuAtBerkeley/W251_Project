@@ -159,7 +159,7 @@ def get_image_boxes_org(bounding_boxes, img, size=24):
 
     return img_boxes
 
-def get_image_boxes(bounding_boxes, img, size=24):
+def get_image_boxes_3(bounding_boxes, img, size=24):
     """Cut out boxes from the image.
 
     Arguments:
@@ -192,6 +192,41 @@ def get_image_boxes(bounding_boxes, img, size=24):
         img_boxes[i, :, :, :] = np.asarray(_preprocess(img_box), dtype=np.int8)
 
     return img_boxes
+
+def get_image_boxes(bounding_boxes, img, img_boxes,size=24):
+    """Cut out boxes from the image.
+
+    Arguments:
+        bounding_boxes: a float numpy array of shape [n, 5].
+        img: an instance of PIL.Image.
+        size: an integer, size of cutouts.
+
+    Returns:
+        a float numpy array of shape [n, 3, size, size].
+    """
+
+    num_boxes = len(bounding_boxes)
+    width, height = img.size
+
+    [dy, edy, dx, edx, y, ey, x, ex, w, h] = correct_bboxes(bounding_boxes, width, height)
+    #img_boxes = np.zeros((num_boxes, 3, size, size), 'uint8')
+    img_boxes.fill(0)
+    img_boxes = img_boxes.reshape([-1, 3, size, size])
+    for i in range(num_boxes):
+        img_box = np.zeros((h[i], w[i], 3), 'uint8')
+
+        img_array = np.asarray(img, 'uint8')
+        img_box[dy[i]:(edy[i] + 1), dx[i]:(edx[i] + 1), :] =\
+            img_array[y[i]:(ey[i] + 1), x[i]:(ex[i] + 1), :]
+
+        # resize
+        img_box = Image.fromarray(img_box)
+        img_box = img_box.resize((size, size), Image.BILINEAR)
+        img_box = np.asarray(img_box, 'uint8')
+
+        img_boxes[i, :, :, :] = np.asarray(_preprocess(img_box)) #, dtype=np.int8)
+
+    return #img_boxes
 
 def correct_bboxes(bboxes, width, height):
     """Crop boxes that are too big and get coordinates

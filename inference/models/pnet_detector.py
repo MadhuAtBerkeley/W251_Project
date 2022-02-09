@@ -55,13 +55,14 @@ class PNetDetector(object):
             print('scales:'.format(self.scales))
             print('image pyramid offsets:', self.image_h_offsets)
         
-    def run_pnet(self, images):
+    def run_pnet(self, images, im_data):
         
         t1 = time()
         width, height = images[0].size #hape[1], image.shape[0]
         
         max_h_offset  = max(sum(offset) for offset in self.image_h_offsets)
-        im_data = np.zeros((3, max_h_offset, self.image_w_offset, 3), dtype=np.uint8)
+        #im_data = np.zeros((3, max_h_offset, self.image_w_offset, 3), dtype=np.uint8)
+        im_data.fill(0)
         
         
         for k, image in enumerate(images):
@@ -72,22 +73,26 @@ class PNetDetector(object):
                     w = int(width * scale)
                     if h == 0 or w == 0:
                         continue
-                    #print(i, h_offset, h, h+h_offset)
+                    print(i, h_offset, h, h+h_offset)
                     img = image.resize((w, h), Image.BILINEAR)
                     img = np.asarray(img, 'uint8')
-                    im_data[i+k*len(self.scales), h_offset:(h_offset+h), :w,:] = img
+                    img = img//2
+                    img = img.transpose((2, 0, 1))
+                    #im_data[i+k*len(self.scales), h_offset:(h_offset+h), :w,:] = img
+                    im_data[i+k*len(self.scales), :, h_offset:(h_offset+h), :w] = img
                
         
             
-        img = preprocess_images(im_data)
-        img = np.ascontiguousarray(img, dtype=np.int8) #float16)
-        print(img.shape)
-        assert img.flags['C_CONTIGUOUS'] == True
+        #img = preprocess_images(im_data)
+        #img = np.ascontiguousarray(img_data) #, dtype=np.int8) #float16)
+        #print(img.shape)
+        #assert img.flags['C_CONTIGUOUS'] == True
            
   
-        output = np.empty([3,6,22,43], dtype = np.float16)
+        #output = np.empty([3,6,22,43], dtype = np.float16)
+        output = np.empty([3,6,27,43], dtype = np.float16)
         assert output.flags['C_CONTIGUOUS'] == True
-        output = self.pnet_engine.run(img, output, self.context_pnet)
+        output = self.pnet_engine.run(im_data, output, self.context_pnet)
         t2 = time()    
         print("Pnet Time:{}".format(t2-t1))
         return output
@@ -120,6 +125,8 @@ class PNetDetector(object):
                
             bboxes_per_image = np.vstack(bboxes_per_image)
         #print('number of bounding boxes:', len(bounding_boxes))
+            bboxes_per_image = bboxes_per_image[bboxes_per_image[:,4].argsort()[::-1]]
+            bboxes_per_image = bboxes_per_image[0:64]
    
             keep = nms(bboxes_per_image[:, 0:5], threshold)
             bboxes_per_image = bboxes_per_image[keep]    
